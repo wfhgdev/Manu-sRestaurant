@@ -1,7 +1,9 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 from app.models.user_model import UserModel
+from app.models.restaurant_model import RestaurantModel
 from app.schemas.user_schema import UserCreate, UserUpdate
 
 
@@ -17,7 +19,17 @@ def get_users(db: Session, skip: int = 0, limit: int = 100) -> list[UserModel]:
     return list(db.execute(select(UserModel).offset(skip).limit(limit)).scalars().all())
 
 
+def check_restaurant_exists(db: Session, id_rest: int) -> bool:
+    return db.execute(select(RestaurantModel).where(RestaurantModel.id_rest == id_rest)).scalar_one_or_none() is not None
+
+
 def create_user(db: Session, user: UserCreate) -> UserModel:
+    if not check_restaurant_exists(db, user.id_rest_user):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El restaurante con id_rest '{user.id_rest_user}' no existe. Debe registrar primero el restaurante o indicar un id_rest existente."
+        )
+
     if get_user_by_email(db, user.email_user):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -32,10 +44,17 @@ def create_user(db: Session, user: UserCreate) -> UserModel:
         tel_user=user.tel_user,
         role_user=user.role_user,
     )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+    try:
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        return db_user
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Error de integridad en base de datos: {str(e.orig)}"
+        )
 
 
 def update_user(db: Session, id_user: int, user_update: UserUpdate) -> UserModel:
@@ -48,6 +67,13 @@ def update_user(db: Session, id_user: int, user_update: UserUpdate) -> UserModel
 
     update_data = user_update.model_dump(exclude_unset=True)
 
+    if "id_rest_user" in update_data and update_data["id_rest_user"] is not None:
+        if not check_restaurant_exists(db, update_data["id_rest_user"]):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"El restaurante con id_rest '{update_data['id_rest_user']}' no existe."
+            )
+
     if "email_user" in update_data and update_data["email_user"] != db_user.email_user:
         if get_user_by_email(db, update_data["email_user"]):
             raise HTTPException(
@@ -58,9 +84,16 @@ def update_user(db: Session, id_user: int, user_update: UserUpdate) -> UserModel
     for field, value in update_data.items():
         setattr(db_user, field, value)
 
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+    try:
+        db.commit()
+        db.refresh(db_user)
+        return db_user
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Error de integridad en base de datos: {str(e.orig)}"
+        )
 
 
 def delete_user(db: Session, id_user: int) -> dict[str, str]:
@@ -71,6 +104,13 @@ def delete_user(db: Session, id_user: int) -> dict[str, str]:
             detail=f"Usuario con id_user {id_user} no encontrado"
         )
 
-    db.delete(db_user)
-    db.commit()
-    return {"message": f"Usuario con id_user {id_user} eliminado exitosamente"}
+    try:
+        db.delete(db_user)
+        db.commit()
+        return {"message": f"Usuario con id_user {id_user} eliminado exitosamente"}
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede eliminar el usuario debido a restricciones de integridad en la base de datos."
+        )

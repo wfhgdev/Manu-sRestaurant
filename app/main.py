@@ -3,7 +3,7 @@ from app.core.config import settings
 from app.core.database_connection import engine, Base
 from sqlalchemy import text
 import app.models  # noqa: F401
-from app.api import test_routes, user_routes
+from app.api import test_routes, user_routes, restaurant_routes
 
 # Crear las tablas en la base de datos si no existen
 Base.metadata.create_all(bind=engine)
@@ -16,6 +16,7 @@ app = FastAPI(
 
 app.include_router(test_routes.router)
 app.include_router(user_routes.router)
+app.include_router(restaurant_routes.router)
 
 
 @app.get("/health/db", tags=["Health"])

@@ -143,8 +143,15 @@ FastAPI genera documentación interactiva lista para probar en el navegador:
 ### Estado del Sistema
 - `GET /health/db` - Verifica la conexión con la base de datos PostgreSQL.
 
+### Restaurantes (`/restaurants`)
+- `POST /restaurants/` - Crear un nuevo restaurante.
+- `GET /restaurants/` - Listar restaurantes con paginación (`skip`, `limit`).
+- `GET /restaurants/{id_rest}` - Obtener un restaurante por su ID.
+- `PUT /restaurants/{id_rest}` - Actualizar datos de un restaurante.
+- `DELETE /restaurants/{id_rest}` - Eliminar un restaurante.
+
 ### Usuarios (`/users`)
-- `POST /users/` - Crear un nuevo usuario.
+- `POST /users/` - Crear un nuevo usuario (requiere un `id_rest_user` válido).
 - `GET /users/` - Listar usuarios con paginación (`skip`, `limit`).
 - `GET /users/{id_user}` - Obtener un usuario por su ID.
 - `PUT /users/{id_user}` - Actualizar datos de un usuario.

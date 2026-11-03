@@ -1,20 +1,13 @@
-import enum
 from pydantic import BaseModel, ConfigDict
-
-
-class UserRole(str, enum.Enum):
-    administrador = "administrador"
-    camarero = "camarero"
-    superadministrador = "superadministrador"
+from app.schemas.enums import UserRole
 
 
 class UserBase(BaseModel):
     name_user: str
     email_user: str
-    id_rest_user: int | None = None
+    id_rest_user: int
     tel_user: str | None = None
     role_user: UserRole
-    state_user: bool = True
 
 
 class UserCreate(UserBase):
@@ -28,7 +21,6 @@ class UserUpdate(BaseModel):
     id_rest_user: int | None = None
     tel_user: str | None = None
     role_user: UserRole | None = None
-    state_user: bool | None = None
 
 
 class UserResponse(UserBase):

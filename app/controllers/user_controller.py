@@ -31,7 +31,6 @@ def create_user(db: Session, user: UserCreate) -> UserModel:
         id_rest_user=user.id_rest_user,
         tel_user=user.tel_user,
         role_user=user.role_user,
-        state_user=user.state_user,
     )
     db.add(db_user)
     db.commit()

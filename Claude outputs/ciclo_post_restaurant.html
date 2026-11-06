@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ciclo de vida de POST /restaurants/ · Manu's Restaurant</title>
+<style>
+:root{
+  --bg:#f7f4ef; --card:#ffffff; --ink:#1f1b16; --muted:#6b6258; --line:#ddd5ca;
+  --accent:#c2410c; --accent-soft:#fde8dc;
+  --ok:#2f7d4f; --ok-soft:#e5f2ea;
+  --err:#b42318; --err-soft:#fde4e1;
+  --code-bg:#1f1b16; --code-ink:#f3ede4; --code-note:#f4b183;
+  --mono: ui-monospace, "Cascadia Code", Consolas, "Courier New", monospace;
+  --sans: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55}
+code{font-family:var(--mono);font-size:.88em;background:#efe8de;padding:.08em .35em;border-radius:4px}
+.wrap{max-width:1240px;margin:0 auto;padding:28px 20px 60px}
+header h1{font-size:clamp(1.5rem,3vw,2.1rem);margin:0 0 4px;letter-spacing:-.01em}
+header p.sub{margin:0;color:var(--muted)}
+.summary{margin:20px 0 26px;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:10px;padding:16px 20px}
+.summary h2{font-size:1rem;margin:0 0 6px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent)}
+.summary p{margin:0}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:22px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+.diagram{position:sticky;top:14px;padding:14px;max-height:calc(100vh - 28px);overflow:auto}
+.diagram h3{margin:2px 4px 8px;font-size:.95rem;color:var(--muted);font-weight:600}
+.diagram svg{width:100%;height:auto;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.8rem;color:var(--muted);margin:6px 4px 0}
+.legend span::before{content:"";display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--c);border:1px solid var(--b)}
+
+/* SVG node states */
+.node rect,.node polygon{fill:#fff;stroke:#b9ad9f;stroke-width:1.6;transition:all .25s}
+.node text{fill:var(--ink);transition:fill .25s}
+.node .t{font:600 14.5px var(--sans)}
+.node .s{font:12.5px var(--mono);fill:var(--muted)}
+.node{cursor:pointer;transition:opacity .25s}
+.node:hover rect,.node:hover polygon{stroke:var(--accent)}
+.node.off{opacity:.28}
+.node.done rect,.node.done polygon{fill:var(--ok-soft);stroke:var(--ok)}
+.node.current rect,.node.current polygon{fill:var(--accent);stroke:var(--accent)}
+.node.current text{fill:#fff}
+.node.err.done rect{fill:var(--err-soft);stroke:var(--err)}
+.node.err.current rect{fill:var(--err);stroke:var(--err)}
+.node.prep rect{stroke-dasharray:5 4}
+.edge{fill:none;stroke:#b9ad9f;stroke-width:1.8;transition:all .25s}
+.edge.off{opacity:.25}
+.edge.done{stroke:var(--ok);stroke-width:2.6}
+.edge.errpath.done{stroke:var(--err)}
+.edge.dashed{stroke-dasharray:6 5}
+.elabel{font:600 12.5px var(--sans);fill:var(--muted)}
+
+/* controls */
+.panel{padding:18px 20px 20px}
+.scen-title{font-size:.85rem;color:var(--muted);margin:0 0 8px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.chip{border:1px solid var(--line);background:#fbf9f6;border-radius:999px;padding:7px 13px;font:inherit;font-size:.9rem;cursor:pointer;color:var(--ink)}
+.chip:hover{border-color:var(--accent)}
+.chip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.progress{display:flex;gap:5px;margin:0 0 14px;flex-wrap:wrap}
+.dot{flex:1 1 18px;min-width:18px;height:7px;border-radius:4px;background:#e7dfd4;border:0;padding:0;cursor:pointer}
+.dot.done{background:var(--ok)}
+.dot.cur{background:var(--accent)}
+.dot.errcur{background:var(--err)}
+.nav{display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap}
+.btn{font:inherit;font-weight:600;border-radius:9px;padding:9px 16px;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:#fff}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn:disabled{opacity:.35;cursor:default}
+.nav .count{margin-left:auto;color:var(--muted);font-size:.9rem}
+.hint{font-size:.8rem;color:var(--muted);margin-top:10px}
+
+.step-tag{display:inline-block;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:3px 9px;border-radius:999px}
+.step-tag.err{color:var(--err);background:var(--err-soft)}
+.step h2{margin:10px 0 10px;font-size:1.4rem;line-height:1.25}
+.step .file{font-family:var(--mono);font-size:.82rem;color:var(--muted);margin:-4px 0 10px}
+.step p{margin:0 0 10px}
+.step ul,.step ol{margin:0 0 10px;padding-left:1.3em}
+.step li{margin:3px 0}
+.box{border-radius:10px;padding:12px 14px;margin:14px 0 0}
+.box h4{margin:0 0 5px;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em}
+.box p{margin:0}
+.box.analogy{background:#fff7e6;border:1px solid #f1dcae}
+.box.analogy h4{color:#9a6700}
+.box.fail{background:var(--err-soft);border:1px solid #f5c2bc}
+.box.fail h4{color:var(--err)}
+.box.tip{background:#eef3fb;border:1px solid #cddcf2}
+.box.tip h4{color:#2456a6}
+.codeblock{margin:14px 0 0}
+.codeblock .lbl{font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+pre{margin:0;background:var(--code-bg);color:var(--code-ink);border-radius:9px;padding:12px 14px;overflow:auto;font:13px/1.5 var(--mono);white-space:pre}
+pre .note{color:var(--code-note)}
+.codenote{font-size:.78rem;color:var(--muted);margin-top:6px}
+
+section.extra{margin-top:34px}
+section.extra h2{font-size:1.35rem;margin:0 0 12px}
+details{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:8px;padding:0 16px}
+summary{cursor:pointer;font-weight:600;padding:12px 0;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"＋";color:var(--accent);margin-right:8px;font-weight:700}
+details[open] summary::before{content:"－"}
+details .ans{padding:0 0 14px}
+details .ans p{margin:0 0 8px}
+.gloss{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.gloss div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.gloss b{display:block}
+.gloss span{color:var(--muted);font-size:.93rem}
+
+#print{display:none}
+@media (max-width:900px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .diagram{position:static;max-height:none}
+}
+
+/* ---------- PRINT / PDF ---------- */
+@page{size:A4;margin:14mm 13mm}
+body.print-mode{background:#fff;font-size:11.5pt}
+body.print-mode #app{display:none}
+body.print-mode #print{display:block}
+#print .pagebreak{break-before:page}
+#print .diagram-page{text-align:center}
+#print .diagram-page svg{height:236mm;width:auto;max-width:100%}
+#print .step{border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:0 0 12px;break-inside:avoid}
+#print .step h2{font-size:1.2rem;margin:6px 0 8px}
+#print pre{font-size:10.5px;white-space:pre-wrap;word-break:break-word}
+#print details{break-inside:avoid}
+#print details summary::before{content:""}
+#print h1{font-size:1.7rem;margin:0 0 4px}
+#print .sec-title{font-size:1.3rem;margin:4px 0 12px}
+#print .gloss div{break-inside:avoid}
+#print .legend{justify-content:center}
+</style>
+</head>
+<body>
+
+<div id="app" class="wrap">
+  <header>
+    <h1>¿Qué pasa cuando creo un restaurante?</h1>
+    <p class="sub">Ciclo de vida de <code>POST /restaurants/</code> en el proyecto <b>Manu's Restaurant</b> (FastAPI + PostgreSQL)</p>
+  </header>
+
+  <div class="summary">
+    <h2>Resumen en 30 segundos</h2>
+    <p id="summaryText"></p>
+  </div>
+
+  <div class="grid">
+    <div class="card diagram">
+      <h3>Diagrama de flujo · pulsa en una caja para ir a ese paso</h3>
+      <div id="svgHost"></div>
+      <div class="legend">
+        <span style="--c:var(--accent);--b:var(--accent)">Paso actual</span>
+        <span style="--c:var(--ok-soft);--b:var(--ok)">Ya hecho</span>
+        <span style="--c:#fff;--b:#b9ad9f">Falta por hacer</span>
+        <span style="--c:var(--err-soft);--b:var(--err)">Error</span>
+      </div>
+    </div>
+
+    <div class="card panel">
+      <p class="scen-title">Elige qué quieres que pase:</p>
+      <div class="chips" id="chips"></div>
+      <div class="progress" id="progress"></div>
+      <div class="step" id="stepCard"></div>
+      <div class="nav">
+        <button class="btn ghost" id="prev">← Anterior</button>
+        <button class="btn" id="next">Siguiente →</button>
+        <button class="btn ghost" id="play">▶ Reproducir</button>
+        <span class="count" id="count"></span>
+      </div>
+      <p class="hint">Truco: también puedes usar las flechas ← → del teclado.</p>
+    </div>
+  </div>
+
+  <section class="extra">
+    <h2>Preguntas que te puede hacer la profesora</h2>
+    <div id="qa"></div>
+  </section>
+
+  <section class="extra">
+    <h2>Mini diccionario</h2>
+    <div class="gloss" id="gloss"></div>
+  </section>
+</div>
+
+<div id="print" class="wrap"></div>
+
+<script>
+/* ======================= CONTENIDO ======================= */
+const NOTE = "Los comentarios marcados con ← son explicaciones añadidas en esta guía; no están en tu proyecto.";
+
+const REQ_JSON = `{
+  "cif_rest": "B12345678",
+  "name_rest": "Manu's Restaurant",
+  "address_rest": "Calle Mayor 1, Murcia",
+  "owner_rest": "Manuel García",
+  "tel_rest": "600123123",
+  "email_rest": "info@manus.es"
+}`;
+
+const RES_JSON = `{
+  "cif_rest": "B12345678",
+  "name_rest": "Manu's Restaurant",
+  "address_rest": "Calle Mayor 1, Murcia",
+  "owner_rest": "Manuel García",
+  "tel_rest": "600123123",
+  "email_rest": "info@manus.es",
+  "id_rest": 1          ← ¡nuevo! lo ha puesto la base de datos
+}`;
+
+const SUMMARY = `El cliente envía un <b>JSON</b> con el método <b>POST</b> a <code>/restaurants/</code>. FastAPI encuentra la ruta, abre una <b>sesión</b> con la base de datos (<code>get_db</code>) y <b>revisa los datos</b> con el esquema <code>RestaurantCreate</code>. La ruta llama al <b>controlador</b>, que comprueba que el <b>CIF no esté repetido</b>, crea un <code>RestaurantModel</code> y lo <b>guarda</b> con <code>add</code>, <code>commit</code> y <code>refresh</code>. FastAPI lo devuelve como JSON con el esquema <code>RestaurantResponse</code> y el código <b>201</b>, y al final se <b>cierra la sesión</b>.`;
+
+const STEPS = {
+  0:{tag:"Paso 0 · antes de todo",title:"El servidor se enciende",file:"app/main.py",
+    simple:`<p>Esto pasa <b>una sola vez</b>, cuando ejecutas <code>uvicorn app.main:app --reload</code>. No forma parte de cada petición, pero sin esto nada funciona. <code>main.py</code> prepara 4 cosas:</p>
+    <ol><li>Lee los datos de conexión del archivo <code>.env</code> (lo hace <code>config.py</code>).</li>
+    <li>Prepara la conexión con PostgreSQL (<code>engine</code>).</li>
+    <li>Crea las tablas si no existen (<code>Base.metadata.create_all</code>). Aquí nace la tabla <code>restaurant</code>.</li>
+    <li>Apunta las rutas que existen (<code>app.include_router</code>).</li></ol>`,
+    analogy:"Es como abrir el restaurante por la mañana: encender las luces, abrir el archivador y colgar el cartel con las ventanillas. Después ya se puede atender a la gente.",
+    code:[{file:"app/main.py",src:`import app.models  # noqa: F401          ← carga todos los modelos (también RestaurantModel)
+from app.api import test_routes, user_routes, restaurant_routes
+
+# Crear las tablas en la base de datos si no existen
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    description=settings.APP_DESCRIPTION
+)
+
+app.include_router(restaurant_routes.router)   ← registra las rutas de restaurantes`}]},
+
+  1:{tag:"Paso 1",title:"El cliente envía la petición",file:"(fuera del proyecto: Swagger, Postman o una web)",
+    simple:`<p>Alguien quiere dar de alta un restaurante. Puede hacerlo desde Swagger (<code>http://127.0.0.1:8000/docs</code>), Postman o una página web. Envía tres cosas:</p>
+    <ul><li><b>Método:</b> <code>POST</code> → significa «quiero <b>crear</b> algo nuevo».</li>
+    <li><b>Dirección:</b> <code>http://127.0.0.1:8000/restaurants/</code></li>
+    <li><b>Datos:</b> un <b>JSON</b> (un texto con forma de ficha) con la información del restaurante.</li></ul>`,
+    analogy:"Rellenas un formulario en papel y lo entregas en la ventanilla de una oficina.",
+    examples:[{lbl:"Lo que envía el cliente (JSON)",src:REQ_JSON}]},
+
+  2:{tag:"Paso 2",title:"FastAPI busca qué función atiende la petición",file:"app/api/restaurant_routes.py",
+    simple:`<p>FastAPI mira dos cosas: el <b>método</b> (POST) y la <b>dirección</b> (/restaurants/).</p>
+    <p>El router tiene el prefijo <code>/restaurants</code> y la función tiene <code>@router.post("/")</code>. Juntos forman <code>POST /restaurants/</code>, así que la petición va a la función <code>create_new_restaurant</code>.</p>`,
+    analogy:"El recepcionista lee el cartel «Altas de restaurantes → ventanilla 3» y te manda allí.",
+    code:[{file:"app/api/restaurant_routes.py",src:`router = APIRouter(prefix="/restaurants", tags=["Restaurants"])
+
+
+@router.post("/", response_model=RestaurantResponse, status_code=status.HTTP_201_CREATED)
+def create_new_restaurant(restaurant: RestaurantCreate, db: Session = Depends(get_db)):
+    return restaurant_controller.create_restaurant(db=db, restaurant=restaurant)`}],
+    tip:"Estas 3 líneas son el «mapa» de todo el recorrido: <code>Depends(get_db)</code> es el paso 3, <code>RestaurantCreate</code> el paso 4, la llamada al controlador el paso 5, y <code>response_model</code> + <code>201</code> el paso 9."},
+
+  3:{tag:"Paso 3",title:"Se abre una sesión con la base de datos",file:"app/core/database_connection.py",
+    simple:`<p>En la función aparece <code>db: Session = Depends(get_db)</code>. <code>Depends</code> significa: «antes de ejecutar mi función, consígueme esto».</p>
+    <p>FastAPI ejecuta <code>get_db()</code>, que crea una <b>sesión</b>: una conversación abierta con PostgreSQL. Con <code>yield</code> se la presta a la función y espera a que termine para cerrarla (paso 10).</p>`,
+    analogy:"Antes de atenderte, el funcionario abre el archivador. Cuando acaba, lo vuelve a cerrar.",
+    code:[{file:"app/core/database_connection.py",src:`SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+)
+
+def get_db():
+    db = SessionLocal()      ← abre la sesión
+    try:
+        yield db             ← se la presta a la ruta
+    finally:
+        db.close()           ← la cierra al terminar (paso 10)`}],
+    tip:"FastAPI prepara la sesión (paso 3) y revisa los datos (paso 4) <b>antes</b> de ejecutar tu función. Si los datos están mal, tu función ni siquiera llega a ejecutarse."},
+
+  4:{tag:"Paso 4",title:"Se revisan los datos con el esquema RestaurantCreate",file:"app/schemas/restaurant_schema.py",
+    simple:`<p>La función dice <code>restaurant: RestaurantCreate</code>. Eso le indica a FastAPI qué forma deben tener los datos. <b>Pydantic</b> (la herramienta que revisa) comprueba:</p>
+    <ul><li><code>cif_rest</code> y <code>name_rest</code>: <b>obligatorios</b> y de tipo texto.</li>
+    <li>Dirección, dueño, teléfono y email: <b>opcionales</b>. Si no vienen, se quedan vacíos (<code>None</code>).</li></ul>
+    <p>Si todo está bien, el JSON se convierte en un objeto <code>restaurant</code> que la función ya puede usar, por ejemplo <code>restaurant.cif_rest</code>.</p>`,
+    analogy:"El funcionario mira el formulario: «¿Has rellenado las casillas obligatorias?». Si falta alguna, te lo devuelve sin tramitarlo.",
+    code:[{file:"app/schemas/restaurant_schema.py",src:`class RestaurantBase(BaseModel):
+    cif_rest: str                      ← obligatorio
+    name_rest: str                     ← obligatorio
+    address_rest: str | None = None    ← opcional
+    owner_rest: str | None = None
+    tel_rest: str | None = None
+    email_rest: str | None = None
+
+
+class RestaurantCreate(RestaurantBase):
+    pass                               ← usa los mismos campos de arriba`}],
+    fail:"Si falta un dato obligatorio o tiene un tipo que no encaja, FastAPI responde él solo con un <b>422</b>. Mira el escenario «Falta un dato»."},
+
+  5:{tag:"Paso 5",title:"La ruta le pasa el trabajo al controlador",file:"app/api/restaurant_routes.py → app/controllers/restaurant_controller.py",
+    simple:`<p>La función de la ruta solo tiene una línea: llama a <code>create_restaurant</code> del controlador y le da la <b>sesión</b> (<code>db</code>) y los <b>datos ya revisados</b> (<code>restaurant</code>).</p>
+    <p>¿Por qué así? Para tener el código ordenado: la <b>ruta</b> solo recibe y responde; el <b>controlador</b> hace el trabajo de verdad (comprobar y guardar).</p>`,
+    analogy:"El camarero toma nota del pedido y lo pasa a la cocina. Quien cocina es el cocinero (el controlador).",
+    code:[{file:"app/api/restaurant_routes.py",src:`    return restaurant_controller.create_restaurant(db=db, restaurant=restaurant)`},
+          {file:"app/controllers/restaurant_controller.py",src:`def create_restaurant(db: Session, restaurant: RestaurantCreate) -> RestaurantModel:`}]},
+
+  6:{tag:"Paso 6",title:"¿Ya existe un restaurante con ese CIF?",file:"app/controllers/restaurant_controller.py",
+    simple:`<p>El CIF identifica a cada empresa y no se puede repetir. Antes de guardar, el controlador llama a <code>get_restaurant_by_cif</code>, que busca en la tabla. Por dentro es como preguntarle a la base de datos:</p>
+    <p><code>SELECT * FROM restaurant WHERE cif_rest = 'B12345678'</code></p>
+    <ul><li>Si <b>encuentra</b> uno → se para todo y responde <b>400</b>.</li>
+    <li>Si <b>no encuentra</b> nada → sigue adelante.</li></ul>`,
+    analogy:"Antes de crear una ficha nueva, el funcionario busca en el archivador si ya hay una con ese CIF.",
+    code:[{file:"app/controllers/restaurant_controller.py",src:`def get_restaurant_by_cif(db: Session, cif_rest: str) -> RestaurantModel | None:
+    return db.execute(select(RestaurantModel).where(RestaurantModel.cif_rest == cif_rest)).scalar_one_or_none()
+
+
+def create_restaurant(db: Session, restaurant: RestaurantCreate) -> RestaurantModel:
+    if get_restaurant_by_cif(db, restaurant.cif_rest):      ← ¿lo ha encontrado?
+        raise HTTPException(                                ← entonces, error 400
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El CIF '{restaurant.cif_rest}' ya está registrado"
+        )`}],
+    fail:"Si el CIF ya existe, se responde <b>400</b>. Mira el escenario «CIF repetido»."},
+
+  7:{tag:"Paso 7",title:"Se crea la «ficha» RestaurantModel",file:"app/controllers/restaurant_controller.py + app/models/restaurant_model.py",
+    simple:`<p>Ahora los datos pasan del <b>esquema</b> (lo que llegó) a un <b>modelo</b> (lo que se guarda). <code>RestaurantModel</code> representa la tabla <code>restaurant</code> en Python: cada atributo es una columna.</p>
+    <p>Ojo: en este momento la ficha <b>solo existe en la memoria</b> del programa. Todavía no está en la base de datos y aún <b>no tiene <code>id_rest</code></b>.</p>`,
+    analogy:"El funcionario pasa tus datos a limpio en una ficha oficial. Pero todavía la tiene en la mano: no la ha guardado en el cajón.",
+    code:[{file:"app/controllers/restaurant_controller.py",src:`    db_restaurant = RestaurantModel(
+        cif_rest=restaurant.cif_rest,
+        name_rest=restaurant.name_rest,
+        address_rest=restaurant.address_rest,
+        owner_rest=restaurant.owner_rest,
+        tel_rest=restaurant.tel_rest,
+        email_rest=restaurant.email_rest,
+    )`},
+    {file:"app/models/restaurant_model.py (resumido)",src:`class RestaurantModel(Base):
+    __tablename__ = "restaurant"                     ← nombre de la tabla
+
+    id_rest: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    cif_rest: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    name_rest: Mapped[str] = mapped_column(String(100), nullable=False)
+    ...`}],
+    tip:"<b>Esquema</b> = el formulario (cómo entran y salen los datos). <b>Modelo</b> = la ficha del archivador (cómo se guardan en la tabla)."},
+
+  8:{tag:"Paso 8",title:"Se guarda en PostgreSQL",file:"app/controllers/restaurant_controller.py",
+    simple:`<p>Tres órdenes, una detrás de otra:</p>
+    <ol><li><code>db.add(db_restaurant)</code> → pone la ficha en la «bandeja de pendientes».</li>
+    <li><code>db.commit()</code> → la guarda <b>de verdad</b>. Por dentro hace un <code>INSERT INTO restaurant ...</code></li>
+    <li><code>db.refresh(db_restaurant)</code> → la vuelve a leer de la base de datos para tenerla al día, con el <code>id_rest</code> que PostgreSQL acaba de ponerle (1, 2, 3...).</li></ol>`,
+    analogy:"Meter la ficha en el cajón y ponerle el sello con su número de registro.",
+    code:[{file:"app/controllers/restaurant_controller.py",src:`    try:
+        db.add(db_restaurant)          ← a la bandeja
+        db.commit()                    ← guardar de verdad
+        db.refresh(db_restaurant)      ← releer (ya tiene id_rest)
+        return db_restaurant
+    except IntegrityError as e:
+        db.rollback()                  ← deshacer
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Error de integridad en base de datos: {str(e.orig)}"
+        )`}],
+    fail:"Si la base de datos rechaza la ficha, salta <code>IntegrityError</code>: se deshace todo con <code>db.rollback()</code> y se responde <b>400</b>. Mira el escenario «Falla la base de datos»."},
+
+  9:{tag:"Paso 9",title:"Se prepara la respuesta y se envía con código 201",file:"app/api/restaurant_routes.py + app/schemas/restaurant_schema.py",
+    simple:`<p>El controlador devuelve el <code>RestaurantModel</code> ya guardado. Como la ruta tiene <code>response_model=RestaurantResponse</code>, FastAPI lo convierte en JSON con esa forma: los mismos campos <b>más el <code>id_rest</code></b>.</p>
+    <p><code>from_attributes=True</code> le permite a Pydantic leer los datos directamente del objeto del modelo.</p>
+    <p>El código <b>201 Created</b> significa «creado con éxito». Es más preciso que un 200 («OK»).</p>`,
+    analogy:"Te dan el resguardo sellado con tu número de registro.",
+    examples:[{lbl:"Lo que recibe el cliente · 201 Created",src:RES_JSON}],
+    code:[{file:"app/schemas/restaurant_schema.py",src:`class RestaurantResponse(RestaurantBase):
+    id_rest: int                                 ← añade el id a la respuesta
+
+    model_config = ConfigDict(from_attributes=True)`}]},
+
+  10:{tag:"Paso 10 · final",title:"Se cierra la sesión",file:"app/core/database_connection.py",
+    simple:`<p>Cuando la petición termina, se vuelve a <code>get_db</code> y se ejecuta el bloque <code>finally</code>: <code>db.close()</code>.</p>
+    <p><code>finally</code> significa «pase lo que pase». La sesión se cierra tanto si todo fue bien como si hubo un error (422 o 400). Así no se quedan conexiones abiertas ocupando la base de datos.</p>`,
+    analogy:"Al terminar de atenderte, el funcionario cierra el archivador, haya salido bien o mal el trámite.",
+    code:[{file:"app/core/database_connection.py",src:`    finally:
+        db.close()`}]},
+
+  E4:{err:true,tag:"Error · 422",title:"Los datos no son correctos",file:"Lo hace FastAPI + Pydantic automáticamente",
+    simple:`<p>Pydantic encontró un problema en el JSON, por ejemplo que falta <code>name_rest</code>. FastAPI responde <b>él solo</b> con un <b>422 Unprocessable Entity</b> («no puedo procesar estos datos») y dice qué falta.</p>
+    <p><b>Tu función no llega a ejecutarse</b>: no se consulta ni se guarda nada. Después se cierra la sesión (paso 10).</p>`,
+    analogy:"Te devuelven el formulario: «Te falta rellenar el nombre».",
+    examples:[{lbl:"El cliente envía (falta name_rest)",src:`{
+  "cif_rest": "B12345678"
+}`},{lbl:"Recibe · 422",src:`{
+  "detail": [
+    {
+      "type": "missing",
+      "loc": ["body", "name_rest"],
+      "msg": "Field required",
+      ...
+    }
+  ]
+}`}]},
+
+  E6:{err:true,tag:"Error · 400",title:"Ese CIF ya está registrado",file:"app/controllers/restaurant_controller.py",
+    simple:`<p>El controlador encontró otro restaurante con el mismo CIF y lanzó una <code>HTTPException</code> con el código <b>400 Bad Request</b> («petición incorrecta»).</p>
+    <p>No se crea ninguna ficha ni se guarda nada. Después se cierra la sesión (paso 10).</p>`,
+    analogy:"«Ya tenemos una ficha con ese CIF; no podemos hacer otra igual».",
+    examples:[{lbl:"Recibe · 400",src:`{
+  "detail": "El CIF 'B12345678' ya está registrado"
+}`}]},
+
+  E8:{err:true,tag:"Error · 400",title:"La base de datos rechazó la ficha",file:"app/controllers/restaurant_controller.py",
+    simple:`<p>La columna <code>cif_rest</code> tiene <code>unique=True</code>: la propia base de datos tampoco deja repetirlo. Si aun así llega un duplicado (por ejemplo, dos personas dan de alta el mismo CIF casi a la vez), PostgreSQL lanza un <code>IntegrityError</code>.</p>
+    <p>Entonces <code>db.rollback()</code> <b>deshace</b> el intento para que la base de datos quede como estaba, y se responde <b>400</b>. Después se cierra la sesión (paso 10).</p>`,
+    analogy:"El archivador tiene un candado: aunque el funcionario se despiste, no deja meter dos fichas con el mismo CIF.",
+    examples:[{lbl:"Recibe · 400",src:`{
+  "detail": "Error de integridad en base de datos: duplicate key value violates unique constraint ..."
+}`}],
+    tip:"Es un <b>doble seguro</b>: primero lo comprueba el código (paso 6) y, por si acaso, también la base de datos."}
+};
+
+const SCEN = {
+  ok:  {label:"✅ Todo va bien",           path:[0,1,2,3,4,5,6,7,8,9,10]},
+  e4:  {label:"❌ Falta un dato",           path:[0,1,2,3,4,"E4",10]},
+  e6:  {label:"❌ CIF repetido",            path:[0,1,2,3,4,5,6,"E6",10]},
+  e8:  {label:"❌ Falla la base de datos",  path:[0,1,2,3,4,5,6,7,8,"E8",10]}
+};
+
+const QA = [
+  ["¿Qué diferencia hay entre un esquema y un modelo?",
+   `<p>El <b>esquema</b> (Pydantic, carpeta <code>schemas/</code>) dice cómo deben ser los datos que <b>entran y salen</b> de la API: <code>RestaurantCreate</code> para entrar y <code>RestaurantResponse</code> para salir.</p><p>El <b>modelo</b> (SQLAlchemy, carpeta <code>models/</code>) representa la <b>tabla</b> de la base de datos: <code>RestaurantModel</code> es la tabla <code>restaurant</code>.</p><p>Ejemplo: el esquema es el formulario que rellenas; el modelo es la ficha que se guarda en el archivador.</p>`],
+  ["¿Por qué la respuesta es 201 y no 200?",
+   `<p>Porque se ha <b>creado</b> algo nuevo. <code>201 Created</code> lo indica con más precisión que <code>200 OK</code>. Está puesto en la ruta: <code>status_code=status.HTTP_201_CREATED</code>.</p>`],
+  ["¿Qué pasa si envío el JSON sin name_rest?",
+   `<p>FastAPI, con Pydantic, responde automáticamente un <b>422</b> diciendo que falta ese campo. La función <code>create_new_restaurant</code> no llega a ejecutarse.</p>`],
+  ["¿Qué pasa si el CIF ya existe?",
+   `<p>El controlador lo detecta con <code>get_restaurant_by_cif</code> y lanza una <code>HTTPException</code> con <b>400</b> y el mensaje «El CIF '...' ya está registrado».</p>`],
+  ["¿Para qué sirve Depends(get_db)?",
+   `<p>Le dice a FastAPI: «antes de ejecutar esta función, abre una sesión con la base de datos y pásamela en <code>db</code>». Cuando la petición acaba, <code>get_db</code> la cierra en el <code>finally</code>. Así no tengo que abrir y cerrar la conexión a mano en cada ruta.</p>`],
+  ["¿Qué hacen add, commit, refresh y rollback?",
+   `<p><code>add</code>: prepara el objeto para guardarlo. <code>commit</code>: lo guarda de verdad (INSERT). <code>refresh</code>: lo vuelve a leer para tener los datos que puso la base de datos, como el <code>id_rest</code>. <code>rollback</code>: si algo falla, deshace los cambios pendientes.</p>`],
+  ["¿Por qué se comprueba el CIF dos veces?",
+   `<p>Es un doble seguro. El controlador lo comprueba antes (para dar un mensaje claro) y además la columna tiene <code>unique=True</code> en la base de datos. Si dos peticiones llegan casi a la vez, la base de datos frena la segunda y el <code>except IntegrityError</code> la recoge.</p>`],
+  ["¿Por qué separar rutas y controladores?",
+   `<p>Para que cada archivo tenga una sola tarea. La <b>ruta</b> recibe la petición y devuelve la respuesta; el <b>controlador</b> tiene la lógica (comprobar el CIF, guardar). Así el código es más fácil de leer, de probar y de reutilizar.</p>`],
+  ["¿De dónde saca el proyecto los datos para conectarse a PostgreSQL?",
+   `<p>Del archivo <code>.env</code>. <code>config.py</code> los lee con <code>Settings</code> (Pydantic Settings) y forma la dirección con <code>database_url</code>, por ejemplo <code>postgresql+psycopg://usuario:contraseña@localhost:5432/mi_bd</code>. Con esa dirección, <code>database_connection.py</code> crea el <code>engine</code>.</p>`],
+  ["¿Cuándo se crea la tabla restaurant?",
+   `<p>Al arrancar el servidor. En <code>main.py</code>, <code>import app.models</code> carga todos los modelos y <code>Base.metadata.create_all(bind=engine)</code> crea las tablas que aún no existen.</p>`],
+  ["¿Qué hace from_attributes=True?",
+   `<p>Permite que <code>RestaurantResponse</code> lea los datos de un <b>objeto</b> (el <code>RestaurantModel</code>) y no solo de un diccionario. Gracias a eso FastAPI puede convertir directamente lo que devuelve el controlador en JSON.</p>`],
+  ["¿Se comprueba que el email tenga un formato válido?",
+   `<p>No. En el esquema <code>email_rest</code> es un <code>str</code> normal, así que acepta cualquier texto. Una posible mejora sería usar <code>EmailStr</code> de Pydantic para que lo revise.</p>`]
+];
+
+const GLOSS = [
+  ["API","Programa que recibe peticiones y devuelve datos. Es la «oficina»."],
+  ["Endpoint / ruta","Una dirección concreta de la API, como POST /restaurants/."],
+  ["POST","Método para crear algo nuevo. GET = leer, PUT = modificar, DELETE = borrar."],
+  ["JSON","Formato de texto para enviar datos: \"campo\": valor."],
+  ["Esquema (Pydantic)","Plantilla que dice cómo deben ser los datos que entran y salen."],
+  ["Modelo (SQLAlchemy)","Clase de Python que representa una tabla de la base de datos."],
+  ["Controlador","Archivo con la lógica: comprobar, crear, guardar."],
+  ["Sesión","Conversación abierta con la base de datos durante una petición."],
+  ["commit / rollback","Guardar los cambios / deshacerlos."],
+  ["Código de estado","Número que resume el resultado: 201 creado, 400 petición incorrecta, 422 datos no válidos."]
+];
+
+/* ======================= DIAGRAMA ======================= */
+const NODES = [
+  {id:"n0", step:0, kind:"rect prep", x:60, y:20, w:340, h:56, t:"0 · Arranca el servidor", s:"main.py · una sola vez"},
+  {id:"n1", step:1, kind:"rect", x:60, y:140, w:340, h:56, t:"1 · El cliente envía el POST", s:"POST /restaurants/ + JSON"},
+  {id:"n2", step:2, kind:"rect", x:60, y:230, w:340, h:56, t:"2 · FastAPI encuentra la ruta", s:"restaurant_routes.py"},
+  {id:"n3", step:3, kind:"rect", x:60, y:320, w:340, h:56, t:"3 · Se abre la sesión con la BD", s:"Depends(get_db)"},
+  {id:"n4", step:4, kind:"diamond", cx:230, cy:450, hw:150, hh:46, t:"4 · ¿Datos correctos?", s:"RestaurantCreate"},
+  {id:"n5", step:5, kind:"rect", x:60, y:540, w:340, h:56, t:"5 · La ruta llama al controlador", s:"create_restaurant()"},
+  {id:"n6", step:6, kind:"diamond", cx:230, cy:670, hw:150, hh:46, t:"6 · ¿El CIF ya existe?", s:"get_restaurant_by_cif()"},
+  {id:"n7", step:7, kind:"rect", x:60, y:760, w:340, h:56, t:"7 · Se crea la ficha", s:"RestaurantModel(...)"},
+  {id:"n8", step:8, kind:"rect", x:60, y:850, w:340, h:56, t:"8 · Se guarda en PostgreSQL", s:"add · commit · refresh"},
+  {id:"n8b",step:8, kind:"diamond", cx:230, cy:980, hw:150, hh:46, t:"¿Falla al guardar?", s:"IntegrityError"},
+  {id:"n9", step:9, kind:"rect", x:60, y:1070, w:340, h:56, t:"9 · Respuesta 201 + JSON", s:"RestaurantResponse"},
+  {id:"n10",step:10,kind:"rect", x:60, y:1160, w:340, h:56, t:"10 · Se cierra la sesión", s:"finally: db.close()"},
+  {id:"E4", step:"E4", kind:"rect err", x:470, y:422, w:240, h:56, t:"422 · Datos incorrectos", s:"Pydantic lo rechaza"},
+  {id:"E6", step:"E6", kind:"rect err", x:470, y:642, w:240, h:56, t:"400 · CIF ya registrado", s:"HTTPException"},
+  {id:"E8", step:"E8", kind:"rect err", x:470, y:952, w:240, h:56, t:"400 · Error de integridad", s:"db.rollback()"}
+];
+const EDGES = [
+  {k:"0>1", d:"M230,76 V136", dashed:true, label:["llega una petición",242,112,"start"]},
+  {k:"1>2", d:"M230,196 V226"},
+  {k:"2>3", d:"M230,286 V316"},
+  {k:"3>4", d:"M230,376 V400"},
+  {k:"4>5", d:"M230,496 V536", label:["Sí",242,522,"start"]},
+  {k:"4>E4",d:"M380,450 H466", label:["No",423,441,"middle"]},
+  {k:"5>6", d:"M230,596 V620"},
+  {k:"6>7", d:"M230,716 V756", label:["No",242,742,"start"]},
+  {k:"6>E6",d:"M380,670 H466", label:["Sí",423,661,"middle"]},
+  {k:"7>8", d:"M230,816 V846"},
+  {k:"8>8b",d:"M230,906 V930"},
+  {k:"8>9", d:"M230,1026 V1066", label:["No",242,1052,"start"]},
+  {k:"8>E8",d:"M380,980 H466", label:["Sí",423,971,"middle"]},
+  {k:"9>10",d:"M230,1126 V1156"},
+  {k:"E4>10",d:"M710,450 H738 V1188 H404", err:true},
+  {k:"E6>10",d:"M710,670 H738 V1188 H404", err:true},
+  {k:"E8>10",d:"M710,980 H738 V1188 H404", err:true}
+];
+
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+
+function buildSVG(){
+  let s = `<svg viewBox="0 0 760 1236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagrama de flujo del POST de restaurant">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9c8f80"/></marker>
+  </defs><g id="edges">`;
+  for(const e of EDGES){
+    s += `<path class="edge ${e.dashed?'dashed':''} ${e.err?'errpath':''}" data-k="${e.k}" d="${e.d}" marker-end="url(#ah)"/>`;
+  }
+  s += `</g><g id="elabels">`;
+  for(const e of EDGES){ if(e.label){const [t,x,y,a]=e.label; s+=`<text class="elabel" x="${x}" y="${y}" text-anchor="${a}">${esc(t)}</text>`;} }
+  s += `</g><g id="nodes">`;
+  for(const n of NODES){
+    const cls = `node ${n.kind}`;
+    let shape, cx, cy;
+    if(n.kind==="diamond"){
+      cx=n.cx; cy=n.cy;
+      shape = `<polygon points="${cx},${cy-n.hh} ${cx+n.hw},${cy} ${cx},${cy+n.hh} ${cx-n.hw},${cy}"/>`;
+    } else {
+      cx=n.x+n.w/2; cy=n.y+n.h/2;
+      shape = `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="10"/>`;
+    }
+    s += `<g class="${cls}" data-id="${n.id}" data-step="${n.step}" tabindex="0">${shape}
+      <text class="t" x="${cx}" y="${cy-3}" text-anchor="middle">${esc(n.t)}</text>
+      <text class="s" x="${cx}" y="${cy+16}" text-anchor="middle">${esc(n.s)}</text></g>`;
+  }
+  s += `</g></svg>`;
+  return s;
+}
+
+/* ======================= TARJETAS ======================= */
+function codeHTML(src){
+  // colorea las notas "← ..." añadidas en la guía
+  return src.split("\n").map(line=>{
+    const i=line.indexOf("←");
+    if(i<0) return esc(line);
+    return esc(line.slice(0,i)) + `<span class="note">${esc(line.slice(i))}</span>`;
+  }).join("\n");
+}
+
+function stepHTML(id){
+  const st = STEPS[id];
+  let h = `<span class="step-tag ${st.err?'err':''}">${esc(st.tag)}</span>
+    <h2>${esc(st.title)}</h2>
+    <div class="file">📄 ${esc(st.file)}</div>
+    ${st.simple}
+    <div class="box analogy"><h4>Como en la vida real</h4><p>${esc(st.analogy)}</p></div>`;
+  if(st.examples) for(const ex of st.examples){
+    h += `<div class="codeblock"><div class="lbl">${esc(ex.lbl)}</div><pre>${codeHTML(ex.src)}</pre></div>`;
+  }
+  if(st.code){
+    let hasNote=false;
+    for(const c of st.code){
+      if(c.src.includes("←")) hasNote=true;
+      h += `<div class="codeblock"><div class="lbl">Código · ${esc(c.file)}</div><pre>${codeHTML(c.src)}</pre></div>`;
+    }
+    if(hasNote) h += `<div class="codenote">${esc(NOTE)}</div>`;
+  }
+  if(st.fail) h += `<div class="box fail"><h4>¿Y si algo falla?</h4><p>${st.fail}</p></div>`;
+  if(st.tip)  h += `<div class="box tip"><h4>Fíjate</h4><p>${st.tip}</p></div>`;
+  return h;
+}
+
+/* ======================= ESTADO / INTERACCIÓN ======================= */
+let scen="ok", idx=0, timer=null;
+const nodesFor = step => NODES.filter(n=>String(n.step)===String(step)).map(n=>n.id);
+
+function edgeKeys(a,b){
+  const k=[`${a}>${b}`]; if(String(a)==="8") k.push("8>8b"); return k;
+}
+
+function render(){
+  const path = SCEN[scen].path, cur = path[idx];
+  // nodos
+  const visited = new Set(path.slice(0,idx+1).map(String));
+  const inPath = new Set(path.map(String));
+  document.querySelectorAll("#svgHost .node").forEach(g=>{
+    const st=g.dataset.step;
+    g.classList.remove("off","done","current");
+    if(String(cur)===st) g.classList.add("current");
+    else if(visited.has(st)) g.classList.add("done");
+    else if(!inPath.has(st)) g.classList.add("off");
+  });
+  // flechas
+  const doneE=new Set(), pathE=new Set();
+  for(let i=0;i<path.length-1;i++){
+    const ks=edgeKeys(path[i],path[i+1]);
+    ks.forEach(k=>pathE.add(k));
+    if(i<idx) ks.forEach(k=>doneE.add(k));
+  }
+  if(String(cur)==="8"){doneE.add("8>8b");}
+  const edgesG=document.querySelector("#svgHost #edges");
+  document.querySelectorAll("#svgHost .edge").forEach(p=>{
+    const k=p.dataset.k;
+    p.classList.remove("off","done");
+    if(doneE.has(k)){p.classList.add("done"); edgesG.appendChild(p);}
+    else if(!pathE.has(k)) p.classList.add("off");
+  });
+  // chips
+  document.querySelectorAll(".chip").forEach(c=>c.classList.toggle("active",c.dataset.s===scen));
+  // progreso
+  document.getElementById("progress").innerHTML = path.map((p,i)=>{
+    let c = i<idx?"done": i===idx ? (String(p).startsWith("E")?"errcur":"cur") : "";
+    return `<button class="dot ${c}" data-i="${i}" title="${esc(STEPS[p].tag)}" aria-label="${esc(STEPS[p].tag)}"></button>`;
+  }).join("");
+  document.querySelectorAll(".dot").forEach(d=>d.onclick=()=>{stop();idx=+d.dataset.i;render();});
+  // tarjeta
+  document.getElementById("stepCard").innerHTML = stepHTML(cur);
+  document.getElementById("prev").disabled = idx===0;
+  document.getElementById("next").disabled = idx===path.length-1;
+  document.getElementById("count").textContent = `${idx+1} de ${path.length}`;
+  // centra el nodo actual en el diagrama si hace scroll
+  const host=document.querySelector(".diagram");
+  const node=document.querySelector(`#svgHost .node.current`);
+  if(node && host.scrollHeight>host.clientHeight){
+    const r=node.getBoundingClientRect(), hr=host.getBoundingClientRect();
+    if(r.top<hr.top+40 || r.bottom>hr.bottom-40) host.scrollBy({top:r.top-hr.top-hr.height/2,behavior:"smooth"});
+  }
+}
+
+function go(d){const n=idx+d; if(n>=0 && n<SCEN[scen].path.length){idx=n;render();}}
+function stop(){ if(timer){clearInterval(timer);timer=null;document.getElementById("play").textContent="▶ Reproducir";} }
+function play(){
+  if(timer){stop();return;}
+  if(idx===SCEN[scen].path.length-1) idx=0;
+  render();
+  document.getElementById("play").textContent="⏸ Pausar";
+  timer=setInterval(()=>{ if(idx<SCEN[scen].path.length-1){idx++;render();} else stop(); }, 4000);
+}
+
+function jumpToStep(step){
+  stop();
+  let p = SCEN[scen].path.map(String);
+  if(!p.includes(String(step))){
+    for(const k of Object.keys(SCEN)) if(SCEN[k].path.map(String).includes(String(step))){scen=k;break;}
+    p = SCEN[scen].path.map(String);
+  }
+  idx = p.indexOf(String(step)); render();
+}
+
+function initApp(){
+  document.getElementById("summaryText").innerHTML = SUMMARY;
+  document.getElementById("svgHost").innerHTML = buildSVG();
+  document.getElementById("chips").innerHTML = Object.entries(SCEN).map(([k,v])=>`<button class="chip" data-s="${k}">${esc(v.label)}</button>`).join("");
+  document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{stop();scen=c.dataset.s;idx=0;render();});
+  document.querySelectorAll("#svgHost .node").forEach(g=>{
+    g.onclick=()=>jumpToStep(g.dataset.step);
+    g.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();jumpToStep(g.dataset.step);}};
+  });
+  document.getElementById("prev").onclick=()=>{stop();go(-1);};
+  document.getElementById("next").onclick=()=>{stop();go(1);};
+  document.getElementById("play").onclick=play;
+  document.addEventListener("keydown",e=>{
+    if(e.target.closest && e.target.closest("summary")) return;
+    if(e.key==="ArrowRight"){stop();go(1);} if(e.key==="ArrowLeft"){stop();go(-1);}
+  });
+  document.getElementById("qa").innerHTML = QA.map(([q,a])=>`<details><summary>${esc(q)}</summary><div class="ans">${a}</div></details>`).join("");
+  document.getElementById("gloss").innerHTML = GLOSS.map(([t,d])=>`<div><b>${esc(t)}</b><span>${esc(d)}</span></div>`).join("");
+  render();
+}
+
+/* ======================= VERSIÓN PDF ======================= */
+function initPrint(){
+  document.body.classList.add("print-mode");
+  const order=[0,1,2,3,4,5,6,7,8,9,10,"E4","E6","E8"];
+  let h = `<header><h1>¿Qué pasa cuando creo un restaurante?</h1>
+    <p class="sub">Ciclo de vida de <code>POST /restaurants/</code> · proyecto Manu's Restaurant (FastAPI + PostgreSQL)</p></header>
+    <div class="summary"><h2>Resumen en 30 segundos</h2><p>${SUMMARY}</p></div>
+    <div class="box tip"><h4>Cómo leer esta guía</h4><p>Primero tienes el diagrama de flujo con el camino completo. Después, cada paso explicado con un ejemplo de la vida real y el código de tu proyecto. Al final, los 3 posibles errores, preguntas típicas de la profesora y un mini diccionario. El camino «normal» es la columna de la izquierda; los errores salen hacia la derecha.</p></div>
+    <div class="pagebreak diagram-page"><h2 class="sec-title">Diagrama de flujo</h2>${buildSVG()}
+      <div class="legend"><span style="--c:#fff;--b:#b9ad9f">Paso del camino normal</span><span style="--c:var(--err-soft);--b:var(--err)">Error (sale del camino)</span><span style="--c:#fff;--b:#b9ad9f">Rombo = pregunta Sí/No</span></div></div>
+    <div class="pagebreak"><h2 class="sec-title">El camino paso a paso</h2>`;
+  for(const id of order){
+    if(id==="E4") h += `<h2 class="sec-title" style="margin-top:18px">Los 3 caminos de error</h2>`;
+    h += `<div class="step">${stepHTML(id)}</div>`;
+  }
+  h += `</div><div class="pagebreak"><h2 class="sec-title">Preguntas que te puede hacer la profesora</h2>
+    ${QA.map(([q,a])=>`<details open><summary>${esc(q)}</summary><div class="ans">${a}</div></details>`).join("")}
+    <div style="break-inside:avoid"><h2 class="sec-title" style="margin-top:20px">Mini diccionario</h2>
+    <div class="gloss">${GLOSS.map(([t,d])=>`<div><b>${esc(t)}</b><span>${esc(d)}</span></div>`).join("")}</div></div></div>`;
+  document.getElementById("print").innerHTML = h;
+  document.querySelectorAll("#print .node.err").forEach(g=>g.classList.add("done"));
+}
+
+if(new URLSearchParams(location.search).has("print")) initPrint(); else initApp();
+</script>
+</body>
+</html>

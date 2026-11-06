@@ -1,6 +1,6 @@
-# FastAPI Template / Boilerplate
+# Manu's Restaurant API
 
-Plantilla base (*boilerplate*) para el desarrollo ágil de APIs REST modernas y escalables con **FastAPI**, **SQLAlchemy 2.0** y **PostgreSQL**. Diseñada con una arquitectura limpia por capas (rutas, controladores, modelos y esquemas).
+API REST para la gestión de restaurantes construida con **FastAPI**, **SQLAlchemy 2.0**, **PostgreSQL**, **Alembic** (migraciones) y **Faker** (datos de prueba). Arquitectura por capas: rutas, controladores, modelos y esquemas.
 
 ---
 
@@ -8,52 +8,94 @@ Plantilla base (*boilerplate*) para el desarrollo ágil de APIs REST modernas y 
 
 - **FastAPI**: Alto rendimiento, tipado estricto y documentación interactiva automática.
 - **SQLAlchemy 2.0**: ORM moderno utilizando `Mapped` y `mapped_column`.
-- **PostgreSQL + Psycopg 3**: Conexión eficiente a base de datos relacional con el driver moderno `psycopg`.
-- **Pydantic v2**: Validación y serialización rápida de datos.
-- **Pydantic Settings**: Gestión centralizada y fuertemente tipada de variables de entorno mediante `.env`.
-- **Arquitectura Modular**: Separación clara de responsabilidades:
-  - `api/`: Definición de rutas y endpoints.
-  - `controllers/`: Lógica de negocio y consultas a la base de datos.
-  - `models/`: Modelos de tablas SQLAlchemy.
-  - `schemas/`: DTOs y validaciones Pydantic.
-  - `core/`: Configuración y sesión de base de datos.
+- **PostgreSQL + Psycopg 3**: Conexión a base de datos relacional con el driver `psycopg`.
+- **Pydantic v2 + Pydantic Settings**: Validación de datos y variables de entorno desde `.env`.
+- **Alembic**: Las tablas se crean y modifican mediante migraciones versionadas.
+- **Seeders**: llenan la base de datos con datos fijos de demostración (respetando las relaciones entre tablas) y con datos falsos de **Faker**.
+- **Pytest**: Tests automáticos en `tests/`.
 
 ---
 
 ## 📁 Estructura del Proyecto
 
 ```text
-fast_api_template/
+Manu-sRestaurant/
 ├── app/
-│   ├── api/                     # Rutas / Endpoints de la API
+│   ├── __init__.py
+│   ├── main.py                    # Punto de entrada de la aplicación FastAPI
+│   ├── dependencies.py            # Dependencias compartidas (Depends)
+│   ├── routers/                   # Rutas / Endpoints de la API
+│   │   ├── __init__.py
+│   │   ├── restaurant_routes.py
 │   │   ├── test_routes.py
 │   │   └── user_routes.py
-│   ├── controllers/             # Lógica de negocio
-│   │   ├── test_controller.py
-│   │   └── user_controller.py
-│   ├── core/                    # Configuraciones centrales
-│   │   ├── config.py            # Variables de entorno con Pydantic Settings
-│   │   └── database_connection.py # Configuración y sesión de SQLAlchemy
-│   ├── models/                  # Modelos de base de datos (SQLAlchemy)
+│   ├── internal/                  # Rutas internas de administración
+│   │   ├── __init__.py
+│   │   └── admin.py
+│   ├── core/                      # Configuración central
+│   │   ├── __init__.py
+│   │   ├── config.py              # Variables de entorno con Pydantic Settings
+│   │   ├── database_connection.py # Engine, sesión y Base de SQLAlchemy
+│   │   └── security.py            # (pendiente) contraseñas y tokens
+│   ├── models/                    # Modelos de base de datos (SQLAlchemy)
+│   │   ├── __init__.py            # Importa TODOS los modelos (lo usa Alembic)
+│   │   ├── booking_model.py
+│   │   ├── category_model.py
+│   │   ├── dish_model.py
+│   │   ├── menu_model.py
+│   │   ├── restaurant_model.py
+│   │   ├── shift_model.py
+│   │   ├── table_model.py
 │   │   ├── test_model.py
 │   │   └── user_model.py
-│   ├── schemas/                 # Esquemas de entrada y salida (Pydantic)
+│   ├── schemas/                   # Esquemas de entrada y salida (Pydantic)
+│   │   ├── __init__.py
+│   │   ├── enums.py
+│   │   ├── restaurant_schema.py
 │   │   ├── test_schema.py
 │   │   └── user_schema.py
-│   └── main.py                  # Punto de entrada de la aplicación FastAPI
-├── .env.example                 # Plantilla de variables de entorno
-├── requirements.txt             # Dependencias del proyecto
-└── README.md
+│   ├── controllers/               # Operaciones sobre la base de datos
+│   │   ├── __init__.py
+│   │   ├── restaurant_controller.py
+│   │   ├── test_controller.py
+│   │   └── user_controller.py
+│   ├── services/                  # Lógica de negocio reutilizable
+│   │   ├── __init__.py
+│   │   └── item_service.py
+│   └── db/
+│       ├── __init__.py
+│       ├── database.py            # Base + todos los modelos cargados
+│       └── migrations/            # Migraciones de Alembic
+│           ├── env.py
+│           ├── script.py.mako
+│           └── versions/
+├── seeders/                       # Datos iniciales y de prueba
+│   ├── __init__.py
+│   ├── factories/
+│   │   ├── __init__.py
+│   │   └── test_factory.py        # Faker: inventa un registro de la tabla test
+│   ├── allergen_seeder.py         # Los 14 alérgenos oficiales (datos fijos)
+│   ├── demo_seeder.py             # Restaurante de demo completo (datos fijos)
+│   ├── test_seeder.py             # Registros falsos para la tabla test
+│   └── run.py                     # Lanzador: python -m seeders.run
+├── tests/
+│   ├── __init__.py
+│   ├── test_main.py
+│   └── test_test.py
+├── .env.example                   # Plantilla de variables de entorno
+├── .gitignore
+├── alembic.ini                    # Configuración de Alembic
+├── requirements.txt
+├── README.md
+└── run.sh                         # Levanta el servidor
 ```
 
 ---
 
 ## 🛠️ Requisitos Previos
 
-Antes de comenzar, asegúrate de tener instalado:
-
 - **Python 3.10** o superior
-- **PostgreSQL** (en ejecución localmente o mediante Docker)
+- **PostgreSQL** en ejecución (local o Docker)
 
 ---
 
@@ -62,23 +104,29 @@ Antes de comenzar, asegúrate de tener instalado:
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/tu-usuario/fast_api_template.git
-cd fast_api_template
+git clone https://github.com/wfhgdev/Manu-sRestaurant.git
+cd Manu-sRestaurant
 ```
 
 ### 2. Crear y activar un entorno virtual
 
 - **En Windows (PowerShell):**
   ```powershell
-  python -m venv env
-  .\env\Scripts\Activate.ps1
+  python -m venv .venv
+  .\.venv\Scripts\Activate.ps1
   ```
 
-- **En Linux / macOS:**
+- **En Linux / macOS / Git Bash:**
   ```bash
-  python3 -m venv env
-  source env/bin/activate
+  python -m venv .venv
+  source .venv/bin/activate      # en Git Bash (Windows): source .venv/Scripts/activate
   ```
+
+Comprobar que se usa el Python del entorno virtual:
+
+```bash
+python -c "import sys; print(sys.executable)"
+```
 
 ### 3. Instalar dependencias
 
@@ -88,19 +136,12 @@ pip install -r requirements.txt
 
 ### 4. Configurar las variables de entorno
 
-Copia el archivo `.env.example` y renómbralo a `.env`:
+Copia `.env.example` como `.env`:
 
-- **En Windows (PowerShell):**
-  ```powershell
-  Copy-Item .env.example .env
-  ```
+- **En Windows (PowerShell):** `Copy-Item .env.example .env`
+- **En Linux / macOS:** `cp .env.example .env`
 
-- **En Linux / macOS:**
-  ```bash
-  cp .env.example .env
-  ```
-
-Abre el archivo `.env` y ajusta las credenciales de conexión a tu base de datos PostgreSQL:
+Y ajusta las credenciales de tu PostgreSQL:
 
 ```env
 APP_NAME=API_TEMPLATE
@@ -115,23 +156,83 @@ DB_PASSWORD=tu_contraseña
 DRIVER_NAME=postgresql+psycopg
 ```
 
-> **Nota:** Asegúrate de que la base de datos especificada en `DB_NAME` exista en tu servidor PostgreSQL antes de iniciar la aplicación. Las tablas se crearán automáticamente al arrancar.
+### 5. Crear la base de datos y las tablas (Alembic)
 
-### 5. Iniciar el servidor de desarrollo
+La base de datos indicada en `DB_NAME` debe existir. Si no existe, créala (pgAdmin o terminal):
 
-Ejecuta el servidor ASGI **Uvicorn** con recarga automática:
+```bash
+psql -U postgres -h localhost -c "CREATE DATABASE tu_base_de_datos;"
+```
+
+Crea las tablas aplicando las migraciones:
+
+```bash
+alembic upgrade head
+```
+
+> **Nota:** si tu base de datos ya tenía las tablas creadas de antes (cuando se creaban solas al arrancar), en lugar de `upgrade head` ejecuta `alembic stamp head` para marcarla como actualizada.
+
+### 6. (Opcional) Llenar con datos de prueba
+
+**Restaurante de demostración (datos fijos):**
+
+```bash
+python -m seeders.run --demo
+```
+
+Inserta los 14 alérgenos oficiales y un restaurante completo ("Manu's Restaurant"): 3 usuarios, 4 categorías, 8 platos con sus alérgenos, un menú del día, 5 mesas, 2 turnos con camareros y mesas asignadas, y 3 reservas. Se puede ejecutar varias veces: si el restaurante ya existe, no inserta nada.
+
+Usuarios de demo:
+
+| Nombre | Email | Contraseña | Rol |
+|---|---|---|---|
+| Manuel García | manu@manusrestaurant.es | admin1234 | administrador |
+| Ana López | ana@manusrestaurant.es | camarero1234 | camarero |
+| Luis Pérez | luis@manusrestaurant.es | camarero1234 | camarero |
+
+> Los objetos se enlazan entre sí (`restaurant=manus`, `allergens=[...]`) en lugar de escribir ids a mano, así SQLAlchemy rellena las claves foráneas y las tablas intermedias automáticamente.
+
+**Registros falsos con Faker (tabla `test`):**
+
+```bash
+python -m seeders.run --count 100
+```
+
+### 7. Iniciar el servidor de desarrollo
 
 ```bash
 uvicorn app.main:app --reload
+# o bien:
+bash run.sh
 ```
 
-El servidor estará disponible por defecto en: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+Disponible en: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+
+### 8. Ejecutar los tests
+
+```bash
+pytest
+```
+
+---
+
+## 🔄 Migraciones con Alembic
+
+| Comando                                    | Para qué                             |
+| ------------------------------------------ | ------------------------------------ |
+| `alembic revision --autogenerate -m "msg"` | Crear migración tras cambiar modelos |
+| `alembic upgrade head`                     | Aplicar todas las pendientes         |
+| `alembic downgrade -1`                     | Deshacer la última                   |
+| `alembic current`                          | Ver versión actual                   |
+| `alembic history`                          | Ver historial                        |
+
+Ejecuta `alembic` siempre desde la raíz del proyecto.
+
+**Orden de trabajo para una entidad nueva:** model → importarlo en `app/models/__init__.py` → `alembic revision --autogenerate` → revisar el archivo generado → `alembic upgrade head` → schema → controller → router → `include_router` en `main.py`.
 
 ---
 
 ## 📖 Documentación Interactiva
-
-FastAPI genera documentación interactiva lista para probar en el navegador:
 
 - **Swagger UI:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 - **ReDoc:** [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
@@ -140,7 +241,8 @@ FastAPI genera documentación interactiva lista para probar en el navegador:
 
 ## 📌 Endpoints Disponibles
 
-### Estado del Sistema
+### General
+- `GET /` - Mensaje de bienvenida.
 - `GET /health/db` - Verifica la conexión con la base de datos PostgreSQL.
 
 ### Restaurantes (`/restaurants`)
@@ -158,11 +260,26 @@ FastAPI genera documentación interactiva lista para probar en el navegador:
 - `DELETE /users/{id_user}` - Eliminar un usuario.
 
 ### Pruebas (`/test`)
+- `GET /test/` - Ruta de prueba.
 - `POST /test/` - Crear un registro de prueba.
+
+---
+
+## 🧾 Cheatsheet
+
+```bash
+source .venv/bin/activate                 # activar venv (Windows: .\.venv\Scripts\Activate.ps1)
+pip freeze > requirements.txt             # actualizar dependencias
+uvicorn app.main:app --reload             # levantar API
+alembic revision --autogenerate -m "msg"  # nueva migración
+alembic upgrade head                      # aplicar migraciones
+python -m seeders.run --demo              # restaurante de demo (datos fijos)
+python -m seeders.run --count 100         # datos falsos con Faker (tabla test)
+pytest                                    # ejecutar tests
+```
 
 ---
 
 ## 📄 Licencia
 
 Este proyecto es de código abierto y está disponible bajo la licencia [MIT](LICENSE).
-

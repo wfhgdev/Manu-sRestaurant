@@ -1,22 +1,27 @@
 from fastapi import FastAPI
-from app.core.config import settings
-from app.core.database_connection import engine, Base
 from sqlalchemy import text
-import app.models  # noqa: F401
-from app.api import test_routes, user_routes, restaurant_routes
 
-# Crear las tablas en la base de datos si no existen
-Base.metadata.create_all(bind=engine)
+from app.core.config import settings
+from app.core.database_connection import engine
+from app.routers import test_routes, user_routes, restaurant_routes
+
+# Las tablas ya NO se crean aquí con Base.metadata.create_all().
+# Ahora las crea Alembic con: alembic upgrade head
 
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description=settings.APP_DESCRIPTION
+    description=settings.APP_DESCRIPTION,
 )
 
 app.include_router(test_routes.router)
 app.include_router(user_routes.router)
 app.include_router(restaurant_routes.router)
+
+
+@app.get("/")
+async def root():
+    return "API template"
 
 
 @app.get("/health/db", tags=["Health"])

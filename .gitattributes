@@ -1,0 +1,2 @@
+# Los scripts de bash deben tener saltos de línea de Linux (LF) para poder ejecutarse
+*.sh text eol=lf

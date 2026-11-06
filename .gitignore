@@ -21,3 +21,6 @@ venv.bak/
 
 # Environment variables
 .env
+
+# Archivos de apoyo locales (no forman parte del proyecto)
+Claude outputs/

@@ -259,6 +259,13 @@ Ejecuta `alembic` siempre desde la raíz del proyecto.
 - `PUT /users/{id_user}` - Actualizar datos de un usuario.
 - `DELETE /users/{id_user}` - Eliminar un usuario.
 
+### Relación Turno-Mesa (`/shift-table-rels`)
+- `POST /shift-table-rels/` - Crear una nueva relación turno-mesa (valida `id_assign_shift_table_rel` e `id_table_shift_table_rel`).
+- `GET /shift-table-rels/` - Listar relaciones turno-mesa con paginación (`skip`, `limit`) y filtros opcionales (`id_assign`, `id_table`).
+- `GET /shift-table-rels/{id_shift_table_rel}` - Obtener una relación por su ID.
+- `PUT /shift-table-rels/{id_shift_table_rel}` - Actualizar datos de una relación.
+- `DELETE /shift-table-rels/{id_shift_table_rel}` - Eliminar una relación.
+
 ### Pruebas (`/test`)
 - `GET /test/` - Ruta de prueba.
 - `POST /test/` - Crear un registro de prueba.

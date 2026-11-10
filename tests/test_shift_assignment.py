@@ -128,3 +128,54 @@ def test_full_shift_assignment_crud_lifecycle():
         db.commit()
         db.close()
 
+
+
+def test_shift_assignment_duplicated():
+    import uuid
+    db = SessionLocal()
+    restaurant = RestaurantModel(cif_rest=f"T{uuid.uuid4().hex[:8].upper()}", name_rest="Restaurante Test Duplicados")
+    db.add(restaurant)
+    db.commit()
+    user = UserModel(
+        id_rest_user=restaurant.id_rest,
+        name_user="Camarero Duplicado",
+        email_user=f"dup_{uuid.uuid4().hex[:8]}@test.com",
+        pass_user="hashed_pass",
+        role_user=UserRole.camarero,
+    )
+    shift = ShiftModel(
+        id_rest_shift=restaurant.id_rest,
+        name_shift=ShiftName.tarde,
+        open_time_shift=time(16, 0, 0),
+        close_time_shift=time(23, 0, 0),
+    )
+    db.add_all([user, shift])
+    db.commit()
+
+    try:
+        payload = {"id_user_assign": user.id_user, "id_shift_assign": shift.id_shift, "date_assign": "2026-12-01"}
+        first = client.post("/shift-assignments/", json=payload)
+        assert first.status_code == 201
+
+        # Mismo usuario, mismo turno y misma fecha: no se permite
+        response = client.post("/shift-assignments/", json=payload)
+        assert response.status_code == 400
+
+        # Otro día sí se permite
+        second = client.post("/shift-assignments/", json={**payload, "date_assign": "2026-12-02"})
+        assert second.status_code == 201
+
+        # Cambiar el segundo al mismo día que el primero: no se permite
+        response = client.put(f"/shift-assignments/{second.json()['id_assign']}", json={"date_assign": "2026-12-01"})
+        assert response.status_code == 400
+
+        # Actualizar y borrar uno que no existe
+        assert client.put("/shift-assignments/999999", json={"date_assign": "2026-12-03"}).status_code == 404
+        assert client.delete("/shift-assignments/999999").status_code == 404
+    finally:
+        db.query(ShiftAssignmentModel).filter(ShiftAssignmentModel.id_user_assign == user.id_user).delete()
+        db.delete(shift)
+        db.delete(user)
+        db.delete(restaurant)
+        db.commit()
+        db.close()

@@ -3,7 +3,7 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database_connection import engine
-from app.routers import test_routes, user_routes, restaurant_routes, table_routes, booking_routes
+from app.routers import test_routes, user_routes, restaurant_routes, menu_routes, table_routes, booking_routes
 
 # Las tablas ya NO se crean aquí con Base.metadata.create_all().
 # Ahora las crea Alembic con: alembic upgrade head
@@ -17,6 +17,7 @@ app = FastAPI(
 app.include_router(test_routes.router)
 app.include_router(user_routes.router)
 app.include_router(restaurant_routes.router)
+app.include_router(menu_routes.router)
 app.include_router(table_routes.router)
 app.include_router(booking_routes.router)
 

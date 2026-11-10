@@ -14,6 +14,7 @@ from app.routers import (
     table_routes,
     allergen_routes,
     dish_routes,
+    table_rel_routes,
 )
 
 # Las tablas ya NO se crean aquí con Base.metadata.create_all().
@@ -35,6 +36,7 @@ app.include_router(shift_assignment_routes.router)
 app.include_router(menu_routes.router)
 app.include_router(table_routes.router)
 app.include_router(booking_routes.router)
+app.include_router(table_rel_routes.router)
 
 
 @app.get("/")

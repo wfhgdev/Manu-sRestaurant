@@ -1,7 +1,6 @@
-
 from decimal import Decimal
 from pydantic import BaseModel, ConfigDict
-
+from app.schemas.allergen_schema import AllergenResponse
 
 class DishCreate(BaseModel):
     id_rest_dish: int
@@ -31,6 +30,6 @@ class DishResponse(BaseModel):
     desc_dish: str | None
     price_dish: Decimal
     state_dish: bool
-    allergens: list[int]
+    allergens: list[AllergenResponse]
 
     model_config = ConfigDict(from_attributes=True)

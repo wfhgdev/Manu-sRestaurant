@@ -3,6 +3,7 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database_connection import engine
+from app.core.exception_handlers import register_exception_handlers
 from app.routers import (
     test_routes,
     user_routes,
@@ -25,6 +26,9 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description=settings.APP_DESCRIPTION,
 )
+
+# Errores de base de datos no controlados -> respuesta clara en vez de error 500
+register_exception_handlers(app)
 
 app.include_router(test_routes.router)
 app.include_router(user_routes.router)

@@ -42,6 +42,23 @@ def check_table_exists(db: Session, id_table: int) -> bool:
     ).scalar_one_or_none() is not None
 
 
+def check_rel_not_duplicated(
+    db: Session, id_assign: int, id_table: int, exclude_id: int | None = None
+) -> None:
+    # La misma mesa no puede estar dos veces en la misma asignación de turno
+    query = select(ShiftTableRelModel).where(
+        ShiftTableRelModel.id_assign_shift_table_rel == id_assign,
+        ShiftTableRelModel.id_table_shift_table_rel == id_table,
+    )
+    if exclude_id is not None:
+        query = query.where(ShiftTableRelModel.id_shift_table_rel != exclude_id)
+    if db.execute(query).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Esa mesa ya está asignada a esa asignación de turno.",
+        )
+
+
 def create_shift_table_rel(db: Session, rel: ShiftTableRelCreate) -> ShiftTableRelModel:
     if not check_assignment_exists(db, rel.id_assign_shift_table_rel):
         raise HTTPException(
@@ -54,6 +71,8 @@ def create_shift_table_rel(db: Session, rel: ShiftTableRelCreate) -> ShiftTableR
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"La mesa con id_table '{rel.id_table_shift_table_rel}' no existe.",
         )
+
+    check_rel_not_duplicated(db, rel.id_assign_shift_table_rel, rel.id_table_shift_table_rel)
 
     db_rel = ShiftTableRelModel(
         id_assign_shift_table_rel=rel.id_assign_shift_table_rel,
@@ -103,6 +122,13 @@ def update_shift_table_rel(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"La mesa con id_table '{update_data['id_table_shift_table_rel']}' no existe.",
             )
+
+    check_rel_not_duplicated(
+        db,
+        update_data.get("id_assign_shift_table_rel") or db_rel.id_assign_shift_table_rel,
+        update_data.get("id_table_shift_table_rel") or db_rel.id_table_shift_table_rel,
+        exclude_id=id_shift_table_rel,
+    )
 
     for field, value in update_data.items():
         setattr(db_rel, field, value)

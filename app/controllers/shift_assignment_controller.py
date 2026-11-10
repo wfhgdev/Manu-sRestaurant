@@ -40,6 +40,24 @@ def check_shift_exists(db: Session, id_shift: int) -> bool:
     return db.execute(select(ShiftModel).where(ShiftModel.id_shift == id_shift)).scalar_one_or_none() is not None
 
 
+def check_assignment_not_duplicated(
+    db: Session, id_user: int, id_shift: int, date_assign: date, exclude_id: int | None = None
+) -> None:
+    # Un mismo usuario no puede tener dos veces el mismo turno el mismo día
+    query = select(ShiftAssignmentModel).where(
+        ShiftAssignmentModel.id_user_assign == id_user,
+        ShiftAssignmentModel.id_shift_assign == id_shift,
+        ShiftAssignmentModel.date_assign == date_assign,
+    )
+    if exclude_id is not None:
+        query = query.where(ShiftAssignmentModel.id_assign != exclude_id)
+    if db.execute(query).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ese usuario ya tiene asignado ese turno en esa fecha.",
+        )
+
+
 def create_shift_assignment(db: Session, assignment: ShiftAssignmentCreate) -> ShiftAssignmentModel:
     if not check_user_exists(db, assignment.id_user_assign):
         raise HTTPException(
@@ -52,6 +70,10 @@ def create_shift_assignment(db: Session, assignment: ShiftAssignmentCreate) -> S
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"El turno con id_shift '{assignment.id_shift_assign}' no existe.",
         )
+
+    check_assignment_not_duplicated(
+        db, assignment.id_user_assign, assignment.id_shift_assign, assignment.date_assign
+    )
 
     db_assignment = ShiftAssignmentModel(
         id_user_assign=assignment.id_user_assign,
@@ -98,6 +120,14 @@ def update_shift_assignment(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"El turno con id_shift '{update_data['id_shift_assign']}' no existe.",
             )
+
+    check_assignment_not_duplicated(
+        db,
+        update_data.get("id_user_assign") or db_assignment.id_user_assign,
+        update_data.get("id_shift_assign") or db_assignment.id_shift_assign,
+        update_data.get("date_assign") or db_assignment.date_assign,
+        exclude_id=id_assign,
+    )
 
     for field, value in update_data.items():
         setattr(db_assignment, field, value)

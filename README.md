@@ -296,3 +296,4 @@ pytest                                    # ejecutar tests
 ## 📄 Licencia
 
 Este proyecto es de código abierto y está disponible bajo la licencia [MIT](LICENSE).
+...

@@ -13,3 +13,4 @@ class MenuDetailCreate(MenuDetailBase):
 class MenuDetailResponse(MenuDetailBase):
     model_config = ConfigDict(from_attributes=True)
     
+    

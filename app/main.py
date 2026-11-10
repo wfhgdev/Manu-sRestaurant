@@ -16,6 +16,7 @@ from app.routers import (
     dish_routes,
     table_rel_routes,
     category_routes,
+    menu_detail_routes
     
 )
 
@@ -40,7 +41,7 @@ app.include_router(table_routes.router)
 app.include_router(booking_routes.router)
 app.include_router(table_rel_routes.router)
 app.include_router(category_routes.router)
-
+app.include_router(menu_detail_routes.router)
 
 @app.get("/")
 async def root():

@@ -8,6 +8,12 @@ from app.routers import (
     user_routes,
     restaurant_routes,
     shift_table_rel_routes,
+    shift_assignment_routes,
+    menu_routes,
+    booking_routes,
+    table_routes,
+    allergen_routes,
+    dish_routes,
 )
 
 # Las tablas ya NO se crean aquí con Base.metadata.create_all().
@@ -23,6 +29,12 @@ app.include_router(test_routes.router)
 app.include_router(user_routes.router)
 app.include_router(restaurant_routes.router)
 app.include_router(shift_table_rel_routes.router)
+app.include_router(dish_routes.router)
+app.include_router(allergen_routes.router)
+app.include_router(shift_assignment_routes.router)
+app.include_router(menu_routes.router)
+app.include_router(table_routes.router)
+app.include_router(booking_routes.router)
 
 
 @app.get("/")

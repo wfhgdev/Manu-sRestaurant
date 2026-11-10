@@ -265,6 +265,12 @@ Ejecuta `alembic` siempre desde la raíz del proyecto.
 - `GET /shift-table-rels/{id_shift_table_rel}` - Obtener una relación por su ID.
 - `PUT /shift-table-rels/{id_shift_table_rel}` - Actualizar datos de una relación.
 - `DELETE /shift-table-rels/{id_shift_table_rel}` - Eliminar una relación.
+### Asignación de Turnos (`/shift-assignments`)
+- `POST /shift-assignments/` - Crear una nueva asignación de turno (valida existencia de `id_user_assign` e `id_shift_assign`).
+- `GET /shift-assignments/` - Listar asignaciones con paginación (`skip`, `limit`) y filtros opcionales (`id_user`, `id_shift`, `date_assign`).
+- `GET /shift-assignments/{id_assign}` - Obtener una asignación de turno por su ID.
+- `PUT /shift-assignments/{id_assign}` - Actualizar datos de una asignación de turno.
+- `DELETE /shift-assignments/{id_assign}` - Eliminar una asignación de turno.
 
 ### Pruebas (`/test`)
 - `GET /test/` - Ruta de prueba.

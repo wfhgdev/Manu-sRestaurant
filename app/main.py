@@ -7,6 +7,7 @@ from app.routers import (
     test_routes,
     user_routes,
     restaurant_routes,
+    shift_table_rel_routes,
     shift_assignment_routes,
     menu_routes,
     booking_routes,
@@ -27,6 +28,7 @@ app = FastAPI(
 app.include_router(test_routes.router)
 app.include_router(user_routes.router)
 app.include_router(restaurant_routes.router)
+app.include_router(shift_table_rel_routes.router)
 app.include_router(dish_routes.router)
 app.include_router(allergen_routes.router)
 app.include_router(shift_assignment_routes.router)

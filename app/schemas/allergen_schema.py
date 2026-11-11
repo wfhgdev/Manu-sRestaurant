@@ -1,12 +1,12 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AllergenCreate(BaseModel):
-    name_allergen: str
+    name_allergen: str = Field(min_length=1, max_length=100)
 
 
 class AllergenUpdate(BaseModel):
-    name_allergen: str
+    name_allergen: str = Field(min_length=1, max_length=100)
 
 
 class AllergenResponse(BaseModel):

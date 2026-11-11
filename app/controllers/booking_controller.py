@@ -1,4 +1,5 @@
 from datetime import date
+from types import SimpleNamespace
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -8,6 +9,7 @@ from app.models.restaurant_model import RestaurantModel
 from app.models.table_model import TableRelModel
 from app.schemas.booking_schema import BookingCreate, BookingUpdate
 from app.schemas.enums import BookingState
+from app.controllers.table_rel_controller import check_table_is_free
 
 
 def get_bookings(
@@ -104,6 +106,25 @@ def update_booking(db: Session, id_booking: int, booking_update: BookingUpdate) 
                 detail="No se puede cambiar el restaurante de una reserva con mesas asignadas. "
                        "Quita antes sus mesas."
             )
+
+    # Si cambia la fecha, la hora o el estado, sus mesas tienen que seguir libres en el nuevo horario
+    new_booking = SimpleNamespace(
+        id_booking=id_booking,
+        date_booking=update_data.get("date_booking") or db_booking.date_booking,
+        start_time_booking=update_data.get("start_time_booking") or db_booking.start_time_booking,
+        state_booking=update_data.get("state_booking") or db_booking.state_booking,
+    )
+    changes_time = (
+        new_booking.date_booking != db_booking.date_booking
+        or new_booking.start_time_booking != db_booking.start_time_booking
+        or new_booking.state_booking != db_booking.state_booking
+    )
+    if changes_time and new_booking.state_booking != BookingState.cancelada:
+        table_ids = db.execute(
+            select(TableRelModel.id_table_table_rel).where(TableRelModel.id_booking_table_rel == id_booking)
+        ).scalars().all()
+        for id_table in table_ids:
+            check_table_is_free(db, new_booking, id_table)
 
     for field, value in update_data.items():
         setattr(db_booking, field, value)

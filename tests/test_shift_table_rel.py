@@ -149,3 +149,71 @@ def test_full_shift_table_rel_crud_lifecycle():
         db.commit()
         db.close()
 
+
+
+def test_shift_table_rel_duplicated():
+    import uuid
+    db = SessionLocal()
+    restaurant = RestaurantModel(cif_rest=f"T{uuid.uuid4().hex[:8].upper()}", name_rest="Restaurante Test Duplicados Mesa")
+    db.add(restaurant)
+    db.commit()
+    user = UserModel(
+        id_rest_user=restaurant.id_rest,
+        name_user="Camarero Duplicado Mesa",
+        email_user=f"dup_{uuid.uuid4().hex[:8]}@test.com",
+        pass_user="hashed_pass",
+        role_user=UserRole.camarero,
+    )
+    shift = ShiftModel(
+        id_rest_shift=restaurant.id_rest,
+        name_shift=ShiftName.manana,
+        open_time_shift=time(8, 0, 0),
+        close_time_shift=time(16, 0, 0),
+    )
+    table1 = RestaurantTableModel(
+        id_rest_table=restaurant.id_rest, name_table="Mesa 1", cap_table=4, location_table=TableLocation.interior
+    )
+    table2 = RestaurantTableModel(
+        id_rest_table=restaurant.id_rest, name_table="Mesa 2", cap_table=4, location_table=TableLocation.terraza
+    )
+    db.add_all([user, shift, table1, table2])
+    db.commit()
+    assignment = ShiftAssignmentModel(
+        id_user_assign=user.id_user, id_shift_assign=shift.id_shift, date_assign=date(2026, 12, 1)
+    )
+    db.add(assignment)
+    db.commit()
+
+    try:
+        payload = {"id_assign_shift_table_rel": assignment.id_assign, "id_table_shift_table_rel": table1.id_table}
+        assert client.post("/shift-table-rels/", json=payload).status_code == 201
+
+        # La misma mesa dos veces en la misma asignación: no se permite
+        assert client.post("/shift-table-rels/", json=payload).status_code == 400
+
+        # Cambiar otra relación a una mesa que ya está en esa asignación: no se permite
+        other = client.post("/shift-table-rels/", json={**payload, "id_table_shift_table_rel": table2.id_table})
+        assert other.status_code == 201
+        response = client.put(
+            f"/shift-table-rels/{other.json()['id_shift_table_rel']}",
+            json={"id_table_shift_table_rel": table1.id_table},
+        )
+        assert response.status_code == 400
+
+        # Actualizar y borrar una relación que no existe
+        assert client.put("/shift-table-rels/999999", json={"id_table_shift_table_rel": table1.id_table}).status_code == 404
+        assert client.delete("/shift-table-rels/999999").status_code == 404
+    finally:
+        db.query(ShiftTableRelModel).filter(
+            ShiftTableRelModel.id_assign_shift_table_rel == assignment.id_assign
+        ).delete()
+        db.delete(assignment)
+        db.commit()
+        db.delete(table1)
+        db.delete(table2)
+        db.delete(shift)
+        db.delete(user)
+        db.commit()
+        db.delete(restaurant)
+        db.commit()
+        db.close()

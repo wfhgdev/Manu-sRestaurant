@@ -9,3 +9,5 @@ alembic==1.20.1
 Faker==40.44.0
 pytest==9.2.0
 httpx==0.28.1
+bcrypt==5.0.0
+

@@ -11,13 +11,13 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    pass_user: str = Field(min_length=1, max_length=255)
+    pass_user: str = Field(min_length=1, max_length=72)
 
 
 class UserUpdate(BaseModel):
     name_user: str | None = Field(default=None, min_length=1, max_length=100)
     email_user: str | None = Field(default=None, min_length=1, max_length=150)
-    pass_user: str | None = Field(default=None, min_length=1, max_length=255)
+    pass_user: str | None = Field(default=None, min_length=1, max_length=72)
     id_rest_user: int | None = None
     tel_user: str | None = Field(default=None, max_length=20)
     role_user: UserRole | None = None

@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from app.models.user_model import UserModel
 from app.models.restaurant_model import RestaurantModel
 from app.schemas.user_schema import UserCreate, UserUpdate
-
+from app.core.security import hash_password
 
 def get_user_by_id(db: Session, id_user: int) -> UserModel | None:
     return db.execute(select(UserModel).where(UserModel.id_user == id_user)).scalar_one_or_none()
@@ -39,7 +39,7 @@ def create_user(db: Session, user: UserCreate) -> UserModel:
     db_user = UserModel(
         name_user=user.name_user,
         email_user=user.email_user,
-        pass_user=user.pass_user,
+        pass_user=hash_password(user.pass_user),
         id_rest_user=user.id_rest_user,
         tel_user=user.tel_user,
         role_user=user.role_user,
@@ -66,6 +66,8 @@ def update_user(db: Session, id_user: int, user_update: UserUpdate) -> UserModel
         )
 
     update_data = user_update.model_dump(exclude_unset=True)
+    if "pass_user" in update_data and update_data["pass_user"] is not None:
+        update_data["pass_user"] = hash_password(update_data["pass_user"])
 
     if "id_rest_user" in update_data and update_data["id_rest_user"] is not None:
         if not check_restaurant_exists(db, update_data["id_rest_user"]):

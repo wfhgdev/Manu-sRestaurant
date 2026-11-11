@@ -96,3 +96,46 @@ def test_booking_crud_flow():
         assert client.get(f"/bookings/{booking['id_booking']}").status_code == 404
     finally:
         client.delete(f"/restaurants/{id_rest}")
+
+
+def test_move_booking_to_occupied_time():
+    # Restaurante temporal con una mesa y dos reservas el mismo día (14:00 y 18:00) en esa mesa
+    id_rest = client.post("/restaurants/", json={
+        "cif_rest": f"T{uuid.uuid4().hex[:8].upper()}",
+        "name_rest": "Restaurante test mover reservas",
+    }).json()["id_rest"]
+
+    try:
+        id_table = client.post("/tables/", json={
+            "id_rest_table": id_rest, "name_table": "Mesa 1", "cap_table": 4, "location_table": "interior",
+        }).json()["id_table"]
+        booking_14 = client.post("/bookings/", json={
+            "id_rest_booking": id_rest, "name_client_booking": "Cliente 14h",
+            "date_booking": MANANA, "start_time_booking": "14:00", "qty_booking": 2,
+        }).json()["id_booking"]
+        booking_18 = client.post("/bookings/", json={
+            "id_rest_booking": id_rest, "name_client_booking": "Cliente 18h",
+            "date_booking": MANANA, "start_time_booking": "18:00", "qty_booking": 2,
+        }).json()["id_booking"]
+        for id_booking in (booking_14, booking_18):
+            assert client.post("/table-rels/", json={
+                "id_booking_table_rel": id_booking, "id_table_table_rel": id_table,
+            }).status_code == 201
+
+        # Mover la de las 18:00 a las 14:30: la mesa ya está ocupada a esa hora
+        response = client.put(f"/bookings/{booking_18}", json={"start_time_booking": "14:30"})
+        assert response.status_code == 400
+
+        # Moverla a las 20:00 sí se permite
+        response = client.put(f"/bookings/{booking_18}", json={"start_time_booking": "20:00"})
+        assert response.status_code == 200
+
+        # Cancelar la de las 14:00 y mover la otra a las 14:30: ahora sí está libre
+        assert client.put(f"/bookings/{booking_14}", json={"state_booking": "cancelada"}).status_code == 200
+        assert client.put(f"/bookings/{booking_18}", json={"start_time_booking": "14:30"}).status_code == 200
+
+        # Reactivar la cancelada: pisaría a la otra, no se permite
+        response = client.put(f"/bookings/{booking_14}", json={"state_booking": "pendiente"})
+        assert response.status_code == 400
+    finally:
+        client.delete(f"/restaurants/{id_rest}")

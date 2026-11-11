@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 
@@ -18,7 +18,20 @@ def get_allergen_by_id(db: Session, id_allergen: int) -> AllergenModel | None:
     ).scalar_one_or_none()
 
 
+def check_allergen_name_available(db: Session, name_allergen: str, exclude_id: int | None = None) -> None:
+    # No puede haber dos alérgenos con el mismo nombre (sin distinguir mayúsculas)
+    query = select(AllergenModel).where(func.lower(AllergenModel.name_allergen) == name_allergen.lower())
+    if exclude_id is not None:
+        query = query.where(AllergenModel.id_allergen != exclude_id)
+    if db.execute(query).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ya existe un alérgeno llamado '{name_allergen}'"
+        )
+
+
 def create_allergen(db: Session, allergen: AllergenCreate) -> AllergenModel:
+    check_allergen_name_available(db, allergen.name_allergen)
     db_allergen = AllergenModel(name_allergen=allergen.name_allergen)
 
     try:
@@ -47,12 +60,22 @@ def update_allergen(
 
     update_data = allergen_update.model_dump(exclude_unset=True)
 
+    if "name_allergen" in update_data:
+        check_allergen_name_available(db, update_data["name_allergen"], exclude_id=id_allergen)
+
     for field, value in update_data.items():
         setattr(db_allergen, field, value)
 
-    db.commit()
-    db.refresh(db_allergen)
-    return db_allergen
+    try:
+        db.commit()
+        db.refresh(db_allergen)
+        return db_allergen
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se ha podido actualizar el alérgeno."
+        )
 
 
 def delete_allergen(db: Session, id_allergen: int) -> dict[str, str]:
@@ -70,7 +93,13 @@ def delete_allergen(db: Session, id_allergen: int) -> dict[str, str]:
             detail="No se puede eliminar el alérgeno porque está asociado a platos."
         )
 
-    db.delete(db_allergen)
-    db.commit()
-
-    return {"message": f"Alérgeno {id_allergen} eliminado exitosamente"}
+    try:
+        db.delete(db_allergen)
+        db.commit()
+        return {"message": f"Alérgeno {id_allergen} eliminado exitosamente"}
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede eliminar el alérgeno porque tiene registros asociados."
+        )

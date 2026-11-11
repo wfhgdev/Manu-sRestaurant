@@ -154,6 +154,14 @@ def delete_dish(db: Session, id_dish: int) -> dict[str, str]:
             detail=f"Plato con id {id_dish} no encontrado"
         )
 
+    # Sin esta comprobación, el plato desaparecería de los menús sin avisar
+    if db_dish.menus:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede eliminar el plato porque está en uno o más menús. "
+                   "Quítalo antes de los menús o desactívalo con state_dish = false."
+        )
+
     try:
         db.delete(db_dish)
         db.commit()

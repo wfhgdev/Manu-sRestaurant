@@ -26,6 +26,7 @@ from app.models import (
     ShiftModel,
     UserModel,
 )
+from app.core.security import hash_password
 from app.schemas.enums import BookingState, ShiftName, TableLocation, UserRole
 from seeders import allergen_seeder
 
@@ -53,13 +54,13 @@ def seed(db: Session) -> bool:
     )
 
     # 3. Usuarios del restaurante
-    # OJO: las contraseñas se guardan tal cual hasta que exista app/core/security.py
+    # Las contraseñas se guardan con hash (bcrypt), igual que al crear un usuario por la API
     manu = UserModel(name_user="Manuel García", email_user="manu@manusrestaurant.es",
-                     pass_user="admin1234", role_user=UserRole.administrador, restaurant=manus)
+                     pass_user=hash_password("admin1234"), role_user=UserRole.administrador, restaurant=manus)
     ana = UserModel(name_user="Ana López", email_user="ana@manusrestaurant.es",
-                    pass_user="camarero1234", role_user=UserRole.camarero, restaurant=manus)
+                    pass_user=hash_password("camarero1234"), role_user=UserRole.camarero, restaurant=manus)
     luis = UserModel(name_user="Luis Pérez", email_user="luis@manusrestaurant.es",
-                     pass_user="camarero1234", role_user=UserRole.camarero, restaurant=manus)
+                     pass_user=hash_password("camarero1234"), role_user=UserRole.camarero, restaurant=manus)
 
     # 4. Categorías de la carta
     entrantes = CategoryModel(name_cat_rest="Entrantes", restaurant=manus)

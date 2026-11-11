@@ -25,6 +25,8 @@ NUMERO_ENORME = 99999999999  # más grande de lo que admite un INTEGER de Postgr
     f"/table-rels/{NUMERO_ENORME}/{NUMERO_ENORME}",
     f"/shift-assignments/{NUMERO_ENORME}",
     f"/shift-table-rels/{NUMERO_ENORME}",
+    f"/categories/{NUMERO_ENORME}",
+    f"/menu-details/menu/{NUMERO_ENORME}",
 ])
 def test_id_demasiado_grande(ruta):
     response = client.get(ruta)
@@ -41,6 +43,8 @@ def test_id_demasiado_grande(ruta):
     "/table-rels/?limit=-1",
     "/shift-assignments/?skip=-1",
     "/shift-table-rels/?limit=-1",
+    "/categories/?skip=-1",
+    "/menu-details/?limit=-1",
 ])
 def test_paginacion_negativa(ruta):
     response = client.get(ruta)

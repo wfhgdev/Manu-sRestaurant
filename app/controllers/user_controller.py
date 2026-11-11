@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from app.models.user_model import UserModel
 from app.models.restaurant_model import RestaurantModel
 from app.schemas.user_schema import UserCreate, UserUpdate
-
+from app.core.security import hash_password
 
 def get_user_by_id(db: Session, id_user: int) -> UserModel | None:
     return db.execute(select(UserModel).where(UserModel.id_user == id_user)).scalar_one_or_none()
